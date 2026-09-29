@@ -36,6 +36,9 @@
         .btn-restore { background-color: #fff3cd; border: 1px solid #ffeeba; color: #856404; display: none; font-weight: bold; }
         .btn-restore:hover { background-color: #ffe8a1; }
 
+        .btn-hide-packs { background-color: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+        .btn-hide-packs:hover { background-color: #f1b0b7; }
+
         .checkbox-item { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; padding: 6px 10px; user-select: none; }
         .checkbox-item:hover { background-color: #f1f3f5; }
         .checkbox-item input { cursor: pointer; }
@@ -137,9 +140,15 @@
             <input type="file" id="input-importar" accept=".json" style="display:none;" onchange="importarJSON(event)">
         </div>
 
-        <button id="btn-restaurar" class="btn-mini btn-restore" onclick="restaurarExcluidos()">
-            🔄 Restaurar Excluídos (<span id="contagem-excluidos">0</span>)
-        </button>
+        <!-- AÇÕES RÁPIDAS DE EXCLUSÃO E RESTAURAÇÃO -->
+        <div style="display: flex; align-items: center; gap: 8px; border-left: 1px solid #ddd; padding-left: 10px;">
+            <button class="btn-mini btn-hide-packs" onclick="excluirPacks()" title="Excluir produtos que contenham múltiplos ou sejam packs">
+                ✂️ Ocultar Packs
+            </button>
+            <button id="btn-restaurar" class="btn-mini btn-restore" onclick="restaurarExcluidos()">
+                🔄 Restaurar Excluídos (<span id="contagem-excluidos">0</span>)
+            </button>
+        </div>
     </div>
     
     <div id="all-slides-wrapper"></div>
@@ -298,6 +307,32 @@
             }
         }
 
+        // --- FUNÇÃO ATUALIZADA: OCULTAR PACKS COM REGEX ---
+        function excluirPacks() {
+            // Regex procura por (um ou mais digitos) + 'x' + (um ou mais digitos). O 'i' no final ignora maiúsculas
+            let regexMultiplicador = /\d+\s*x\s*\d+/i; 
+            let palavrasChave = ["pack", "caixa", "2pk", "multipack", "leve"];
+            let quantidadeOcultada = 0;
+
+            allProducts.forEach(prod => {
+                let nomeParaVerificar = (prod.customName || prod.name || "").toLowerCase();
+                
+                let temPalavraChave = palavrasChave.some(termo => nomeParaVerificar.includes(termo));
+                let temMultiplicador = regexMultiplicador.test(nomeParaVerificar);
+                
+                if ((temPalavraChave || temMultiplicador) && !prod.excluded) {
+                    prod.excluded = true;
+                    quantidadeOcultada++;
+                }
+            });
+
+            if (quantidadeOcultada > 0) {
+                renderLadder();
+            } else {
+                alert("Nenhum Pack encontrado para ocultar.");
+            }
+        }
+
         function restaurarExcluidos() {
             allProducts.forEach(p => p.excluded = false);
             renderLadder(); 
@@ -311,7 +346,6 @@
             }
         }
 
-        // FUNÇÃO ATUALIZADA: MANTÉM TODA A LÓGICA, APENAS CONVERTE PREÇO E REORDENA
         function salvarEdicao(id, campo, valor) {
             let prod = allProducts.find(p => p.id === id);
             if (prod) {
@@ -500,7 +534,7 @@
                 slideContainer.className = 'slide-container';
                 const downloadBtn = document.createElement('button');
                 downloadBtn.className = 'btn-download-slide';
-                downloadBtn.innerHTML = `⬇️ Baixar Imagem (Parte ${chunkIndex + 1})`;
+                downloadBtn.innerHTML = `⬇️️ Baixar Imagem (Parte ${chunkIndex + 1})`;
                 downloadBtn.onclick = () => downloadSingleSlide(`slide-element-${chunkIndex}`, chunkIndex + 1);
                 
                 const slideDiv = document.createElement('div');
