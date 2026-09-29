@@ -311,13 +311,28 @@
             }
         }
 
+        // FUNÇÃO ATUALIZADA: MANTÉM TODA A LÓGICA, APENAS CONVERTE PREÇO E REORDENA
         function salvarEdicao(id, campo, valor) {
             let prod = allProducts.find(p => p.id === id);
             if (prod) {
-                if (campo === 'nome') prod.customName = valor;
-                if (campo === 'preco') prod.customPrice = valor;
-                if (campo === 'precoRecomendado') prod.customRecommendedPrice = valor;
+                if (campo === 'nome') {
+                    prod.customName = valor;
+                }
+                if (campo === 'preco') {
+                    prod.customPrice = valor;
+                    
+                    let numStr = valor.replace(/\./g, '').replace(',', '.').replace(/[^0-9.-]+/g, "");
+                    let numParsed = parseFloat(numStr);
+                    
+                    if(!isNaN(numParsed)) {
+                        prod.price = numParsed; 
+                    }
+                }
+                if (campo === 'precoRecomendado') {
+                    prod.customRecommendedPrice = valor;
+                }
             }
+            renderLadder(); 
         }
 
         function toggleDropdown() {
@@ -463,7 +478,6 @@
             const espacoDeRespiro = 250; 
 
             chunks.forEach((chunk, chunkIndex) => {
-                // CORREÇÃO CRUCIAL: O TAMANHO DO SLIDE É CALCULADO COM BASE NA QUANTIDADE DE PRODUTOS DESTE CHUNK ESPECÍFICO!
                 let itemsInThisChunk = chunk.length;
 
                 const baseSlideWidth = itemsInThisChunk * xOffset;

@@ -358,7 +358,7 @@ const bancoImagens = {
     "DOVE 3-PACK": "https://covabra.vtexassets.com/arquivos/ids/572903-800-auto?v=639052190741470000&width=800&height=auto&aspect=true",
     "BARUEL OTHER": "https://www.baruel.com.br/wp-content/uploads/2024/11/Sabonete-Liquido-GLICERINA-Refil-Baruel-Baby-210ml-Frente.png",
     "CLEENER": "https://static.vecteezy.com/system/resources/previews/022/925/919/non_2x/global-opportunities-text-business-ideas-growth-icon-label-badge-design-vector.jpg",
-    "ELMEX MW": "https://www.farmaciasahumada.cl/dw/image/v2/BJVH_PRD/on/demandware.static/-/Sites-ahumada-master-catalog/default/dw874bc8b5/images/products/87643/87643.jpg?sw=1050&sh=1050&sm=fit",
+    "ELMEX MW": "https://cdn.dentalcremer.com.br/produtos/550/Enxaguante-bucal-sensitive-hbs1.jpg",
     "DOVE BABY OTHER": "https://drogariaspacheco.vteximg.com.br/arquivos/ids/854798-500-500/635138---kit-dove-baby-hidratacao-enriquecida-sabonete-liquido-200ml-refil-180ml.jpg?v=637889304211500000",
     "CUP WHITENING": "https://tdc08h.vteximg.com.br/arquivos/ids/199443-1000-1000/Creme-Dental-Close-Up-Xtra-90g-Whitening.jpg?v=637974833884170000",
     "DENTRAT": "https://acaps.org.br/sistema/arquivos/noticias/123253060722NewsATS_Vidalife.jpg",
