@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerador de Price Ladder</title>
+    <!-- Biblioteca para exportar imagem -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- Biblioteca para ler planilhas Excel (.xlsx) diretamente no navegador -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <!-- Dados padrão e Banco de Imagens -->
+    <script src="dados.js"></script> 
+    <script src="banco_imagens.js"></script> 
+    
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; background-color: #e9ecef; padding: 20px; margin: 0; }
+        .controls { margin-bottom: 20px; background: white; padding: 15px; border-radius: 8px; border: 1px solid #ddd; display: flex; align-items: center; gap: 15px; flex-wrap: wrap; z-index: 50; position: relative;}
+        
+        .dropdown-container { position: relative; display: inline-block; }
+        .dropdown-btn { background-color: #fff; border: 1px solid #ccc; padding: 8px 12px; border-radius: 4px; font-size: 13px; cursor: pointer; min-width: 160px; text-align: left; display: flex; justify-content: space-between; align-items: center; }
+        .dropdown-btn:hover { background-color: #f8f9fa; }
+        .dropdown-content { display: none; position: absolute; top: 100%; left: 0; background-color: #fff; min-width: 220px; box-shadow: 0px 8px 16px rgba(0,0,0,0.15); border: 1px solid #ddd; border-radius: 4px; margin-top: 5px; max-height: 300px; overflow-y: auto; z-index: 100; }
+        .dropdown-content.show { display: block; }
+        .dropdown-actions { display: flex; justify-content: space-between; padding: 8px; border-bottom: 1px solid #eee; background: #f8f9fa; position: sticky; top: 0; z-index: 101;}
+        
+        .btn-mini { padding: 6px 10px; font-size: 12px; background: #e2e6ea; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 5px; }
+        .btn-mini:hover { background: #d2d6da; }
+        
+        .btn-excel { background-color: #0d6efd; color: white; border: none; }
+        .btn-excel:hover { background-color: #0b5ed7; }
+
+        .btn-save { background-color: #28a745; color: white; border: none; }
+        .btn-save:hover { background-color: #218838; }
+        
+        .btn-restore { background-color: #fff3cd; border: 1px solid #ffeeba; color: #856404; display: none; font-weight: bold; }
+        .btn-restore:hover { background-color: #ffe8a1; }
+
+        .checkbox-item { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; padding: 6px 10px; user-select: none; }
+        .checkbox-item:hover { background-color: #f1f3f5; }
+        .checkbox-item input { cursor: pointer; }
+
+        #all-slides-wrapper { display: flex; flex-direction: column; gap: 50px; width: fit-content; position: relative; z-index: 1; }
+        .slide-container { display: flex; flex-direction: column; gap: 10px; border: 2px dashed #adb5bd; padding: 10px; border-radius: 8px; background-color: #fff; width: fit-content; }
+        .slide { background-color: transparent; position: relative; border: none; box-sizing: border-box; overflow: hidden; }
+        .ladder-container { position: absolute; width: 100%; height: 100%; top: 0; left: 0; }
+        .stair-step { position: absolute; background: transparent; border-bottom: 2px solid #888; border-right: 2px solid #888; z-index: 1; box-sizing: border-box; }
+        
+        .product-card { position: absolute; width: 105px; background: transparent; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; z-index: 2; box-sizing: border-box; }
+        
+        .card-actions { position: absolute; top: -15px; right: -10px; display: none; gap: 3px; z-index: 15; }
+        .product-card:hover .card-actions { display: flex; }
+        .btn-action { width: 20px; height: 20px; border-radius: 50%; border: none; font-size: 11px; font-weight: bold; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+        .btn-action:hover { transform: scale(1.15); }
+        .btn-delete { background: #dc3545; }
+        .btn-highlight { background: #ffc107; color: #000; font-size: 14px; }
+
+        .is-highlighted { background-color: #fff9e6; border: 2px solid #ffc107; border-radius: 6px; box-shadow: 0 0 15px rgba(255, 193, 7, 0.6); padding-top: 2px;}
+
+        .recommended-price { color: #dc3545; font-weight: 900; font-size: 11px; margin-bottom: 2px; text-align: center; width: 100%; border-radius: 4px; transition: 0.2s; outline: none; line-height: 1.1; padding: 2px 0;}
+        .recommended-price[contenteditable="true"]:hover, .recommended-price[contenteditable="true"]:focus { background-color: rgba(0,0,0,0.05); outline: 1px dashed red; cursor: text; }
+
+        .product-image-container { height: 80px; width: 100%; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 2px; cursor: pointer; border-radius: 4px; transition: 0.2s; box-sizing: border-box;}
+        .product-image-container:hover { background-color: rgba(0,0,0,0.05); outline: 1px dashed #999; }
+        .product-image-container img { max-height: 78px; max-width: 100%; object-fit: contain; pointer-events: none;}
+        
+        .product-name, .product-price { border-radius: 4px; transition: 0.2s; outline: none; }
+        .product-name[contenteditable="true"]:hover, .product-name[contenteditable="true"]:focus,
+        .product-price[contenteditable="true"]:hover, .product-price[contenteditable="true"]:focus { background-color: rgba(0,0,0,0.05); outline: 1px dashed #999; cursor: text; }
+        
+        .product-name { 
+            font-size: 11px; 
+            font-weight: 700; 
+            color: #444; 
+            text-transform: uppercase; 
+            text-align: center; 
+            height: 38px; 
+            max-height: 38px;
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            line-height: 1.1; 
+            width: 100%; 
+            overflow: hidden;
+            text-overflow: ellipsis;
+            word-break: break-word;
+            margin-top: 2px;
+        }
+
+        .product-price { font-weight: 900; font-size: 14px; color: #000; height: 25px; display: flex; align-items: flex-start; justify-content: center; padding-top: 2px; width: 100%; }
+        
+        button, input[type="number"], select { padding: 8px 12px; font-size: 13px; cursor: pointer; border-radius: 4px; border: 1px solid #ccc; }
+        input[type="number"] { width: 60px; text-align: center; }
+        .btn-download-slide { background-color: #0056b3; color: white; border: none; font-weight: bold; width: fit-content; }
+        .btn-download-slide:hover { background-color: #004494; }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <!-- BOTÃO DE UPLOAD DA PLANILHA EXCEL -->
+        <button class="btn-mini btn-excel" onclick="document.getElementById('input-excel').click()" title="Fazer upload de planilha Excel (.xlsx)">
+            📊 Upload Excel
+        </button>
+        <input type="file" id="input-excel" accept=".xlsx, .xls" style="display:none;" onchange="processarExcelUpload(event)">
+
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <label><strong>1ª escada:</strong></label>
+            <input type="number" id="items-first-slide" value="12" min="1" onchange="renderLadder()" onkeyup="renderLadder()">
+        </div>
+        
+        <div class="dropdown-container">
+            <button class="dropdown-btn" id="dropdown-btn" onclick="toggleDropdown()">
+                Filtrar Fabricantes <span>▼</span>
+            </button>
+            <div class="dropdown-content" id="dropdown-content">
+                <div class="dropdown-actions">
+                    <button class="btn-mini" onclick="selectAll(true)">Marcar Todos</button>
+                    <button class="btn-mini" onclick="selectAll(false)">Desmarcar</button>
+                </div>
+                <div id="manufacturer-filters"></div>
+            </div>
+        </div>
+
+        <label style="display: flex; align-items: center; gap: 5px; cursor: pointer; padding-left: 10px; border-left: 1px solid #ddd;">
+            <input type="checkbox" id="toggle-names" checked onchange="renderLadder()" style="width: 16px; height: 16px;">
+            <strong>Mostrar nomes</strong>
+        </label>
+
+        <!-- GERENCIAMENTO DE PROJETOS E BACKUP -->
+        <div style="display: flex; align-items: center; gap: 8px; border-left: 1px solid #ddd; padding-left: 10px;">
+            <button class="btn-mini btn-save" onclick="salvarProjeto()">💾 Salvar</button>
+            <select id="select-projetos" onchange="carregarProjeto(this.value)">
+                <option value="">📂 Meus Projetos Salvos...</option>
+            </select>
+            <button class="btn-mini" onclick="exportarJSON()" title="Baixar arquivo de backup">📥 Exportar</button>
+            <button class="btn-mini" onclick="document.getElementById('input-importar').click()" title="Carregar arquivo de backup">📤 Importar</button>
+            <input type="file" id="input-importar" accept=".json" style="display:none;" onchange="importarJSON(event)">
+        </div>
+
+        <button id="btn-restaurar" class="btn-mini btn-restore" onclick="restaurarExcluidos()">
+            🔄 Restaurar Excluídos (<span id="contagem-excluidos">0</span>)
+        </button>
+    </div>
+    
+    <div id="all-slides-wrapper"></div>
+
+    <script>
+        let allProducts = []; 
+
+        window.onload = function() {
+            if (typeof produtosExcel !== 'undefined') {
+                carregarArrayProdutos(produtosExcel);
+            } else {
+                document.getElementById('all-slides-wrapper').innerHTML = "<h3 style='color:#666;'>Nenhum dado carregado. Clique em <strong>📊 Upload Excel</strong> no topo para carregar a sua planilha.</h3>";
+            }
+            atualizarListaProjetos();
+        };
+
+        function carregarArrayProdutos(listaBruta) {
+            allProducts = listaBruta.map(row => {
+                let recPriceRaw = row.PrecoRecomendado || row['Preço Recomendado'] || row.Preco_Recomendado || row.MSRP || 0;
+                let recPriceNum = typeof recPriceRaw === 'number' ? recPriceRaw : parseFloat(String(recPriceRaw).replace(',', '.').replace(/[^0-9.-]+/g, ""));
+                if (isNaN(recPriceNum)) recPriceNum = 0;
+
+                let priceRaw = row.Preco || row.Preço || row.Price || 0;
+                let priceNum = typeof priceRaw === 'number' ? priceRaw : parseFloat(String(priceRaw).replace(',', '.').replace(/[^0-9.-]+/g, ""));
+                if (isNaN(priceNum)) priceNum = 0;
+
+                let nomeProduto = row.Produto || row.PPG || row.Product || "Sem Nome";
+                let imgLink = row.Imagem || row.Image || row.Foto || "";
+
+                if (!imgLink && typeof bancoImagens !== 'undefined' && bancoImagens[nomeProduto]) {
+                    imgLink = bancoImagens[nomeProduto];
+                }
+
+                return {
+                    id: 'prod_' + Math.random().toString(36).substring(2, 9),
+                    name: nomeProduto,
+                    price: priceNum,
+                    img: imgLink,
+                    manufacturer: row.Fabricante || row.Manufacturer || "Outros",
+                    recommendedPrice: recPriceNum, 
+                    
+                    customName: undefined, 
+                    customPrice: undefined, 
+                    customRecommendedPrice: undefined,
+                    customImg: undefined,
+                    excluded: false,
+                    highlighted: false
+                };
+            });
+
+            gerarFiltrosFabricantes();
+            renderLadder();
+        }
+
+        function processarExcelUpload(event) {
+            let file = event.target.files[0];
+            if (!file) return;
+
+            let reader = new FileReader();
+            reader.onload = function(e) {
+                let data = new Uint8Array(e.target.result);
+                let workbook = XLSX.read(data, { type: 'array' });
+                
+                let firstSheetName = workbook.SheetNames[0];
+                let worksheet = workbook.Sheets[firstSheetName];
+                let jsonExcel = XLSX.utils.sheet_to_json(worksheet);
+
+                if (jsonExcel && jsonExcel.length > 0) {
+                    carregarArrayProdutos(jsonExcel);
+                    alert(`Planilha carregada com sucesso! (${jsonExcel.length} produtos processados)`);
+                } else {
+                    alert("A planilha carregada parece estar vazia.");
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function salvarProjeto() {
+            let nomeProjeto = prompt("Digite um nome para guardar esta escada:", `Escada_${new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')}`);
+            if (!nomeProjeto || nomeProjeto.trim() === "") return;
+
+            let dadosParaSalvar = {
+                itemsFirstSlide: document.getElementById('items-first-slide').value,
+                products: allProducts
+            };
+
+            let projetosSalvos = JSON.parse(localStorage.getItem('ladder_projects') || '{}');
+            projetosSalvos[nomeProjeto.trim()] = dadosParaSalvar;
+            localStorage.setItem('ladder_projects', JSON.stringify(projetosSalvos));
+
+            alert(`Projeto "${nomeProjeto}" salvo com sucesso!`);
+            atualizarListaProjetos();
+        }
+
+        function atualizarListaProjetos() {
+            let select = document.getElementById('select-projetos');
+            select.innerHTML = '<option value="">📂 Meus Projetos Salvos...</option>';
+            
+            let projetosSalvos = JSON.parse(localStorage.getItem('ladder_projects') || '{}');
+            Object.keys(projetosSalvos).forEach(nome => {
+                let opt = document.createElement('option');
+                opt.value = nome;
+                opt.innerText = nome;
+                select.appendChild(opt);
+            });
+        }
+
+        function carregarProjeto(nomeProjeto) {
+            if (!nomeProjeto) return;
+            let projetosSalvos = JSON.parse(localStorage.getItem('ladder_projects') || '{}');
+            let projeto = projetosSalvos[nomeProjeto];
+
+            if (projeto) {
+                document.getElementById('items-first-slide').value = projeto.itemsFirstSlide || 12;
+                allProducts = projeto.products;
+                gerarFiltrosFabricantes();
+                renderLadder();
+            }
+        }
+
+        function exportarJSON() {
+            let dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(allProducts, null, 2));
+            let downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `Escada_Backup_${new Date().getTime()}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        function importarJSON(event) {
+            let fileReader = new FileReader();
+            fileReader.onload = function(e) {
+                try {
+                    let importedProducts = JSON.parse(e.target.result);
+                    if (Array.isArray(importedProducts)) {
+                        allProducts = importedProducts;
+                        gerarFiltrosFabricantes();
+                        renderLadder();
+                        alert("Backup importado com sucesso!");
+                    } else {
+                        alert("Ficheiro inválido.");
+                    }
+                } catch (err) {
+                    alert("Erro ao ler o ficheiro JSON.");
+                }
+            };
+            fileReader.readAsText(event.target.files[0]);
+        }
+
+        function excluirProduto(id) {
+            let prod = allProducts.find(p => p.id === id);
+            if (prod) {
+                prod.excluded = true;
+                renderLadder(); 
+            }
+        }
+
+        function restaurarExcluidos() {
+            allProducts.forEach(p => p.excluded = false);
+            renderLadder(); 
+        }
+
+        function toggleHighlight(id) {
+            let prod = allProducts.find(p => p.id === id);
+            if (prod) {
+                prod.highlighted = !prod.highlighted;
+                renderLadder();
+            }
+        }
+
+        function salvarEdicao(id, campo, valor) {
+            let prod = allProducts.find(p => p.id === id);
+            if (prod) {
+                if (campo === 'nome') prod.customName = valor;
+                if (campo === 'preco') prod.customPrice = valor;
+                if (campo === 'precoRecomendado') prod.customRecommendedPrice = valor;
+            }
+        }
+
+        function toggleDropdown() {
+            document.getElementById("dropdown-content").classList.toggle("show");
+        }
+
+        window.onclick = function(event) {
+            const btn = document.getElementById('dropdown-btn');
+            const dropdown = document.getElementById('dropdown-content');
+            if (event.target !== btn && !btn.contains(event.target) && !dropdown.contains(event.target)) {
+                dropdown.classList.remove('show');
+            }
+        }
+
+        function selectAll(checkStatus) {
+            const checkboxes = document.querySelectorAll('.mfr-checkbox');
+            checkboxes.forEach(cb => cb.checked = checkStatus);
+            renderLadder();
+        }
+
+        function gerarFiltrosFabricantes() {
+            const container = document.getElementById('manufacturer-filters');
+            container.innerHTML = ''; 
+            
+            const fabricantesUnicos = [...new Set(allProducts.map(p => p.manufacturer))].sort();
+            
+            fabricantesUnicos.forEach(fab => {
+                const label = document.createElement('label');
+                label.className = 'checkbox-item';
+                label.innerHTML = `<input type="checkbox" value="${fab}" class="mfr-checkbox" checked onchange="renderLadder()"> ${fab}`;
+                container.appendChild(label);
+            });
+        }
+
+        function trimTransparentEdges(src) {
+            return new Promise((resolve) => {
+                if (!src) { resolve("blank"); return; }
+                if (src.startsWith('data:image')) { resolve(src); return; } 
+
+                const img = new Image();
+                img.crossOrigin = "Anonymous"; 
+                
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+                    ctx.drawImage(img, 0, 0);
+                    
+                    const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    const data = pixels.data;
+                    let top = null, bottom = null, left = null, right = null;
+                    
+                    for (let y = 0; y < canvas.height; y++) {
+                        for (let x = 0; x < canvas.width; x++) {
+                            const idx = (y * canvas.width + x) * 4;
+                            const r = data[idx]; const g = data[idx+1]; const b = data[idx+2]; const a = data[idx+3];
+                            const isWhite = (r > 240 && g > 240 && b > 240);
+                            
+                            if (a > 0 && !isWhite) { 
+                                if (top === null) top = y;
+                                bottom = y;
+                                if (left === null || x < left) left = x;
+                                if (right === null || x > right) right = x;
+                            } else if (isWhite) {
+                                data[idx+3] = 0;
+                            }
+                        }
+                    }
+                    
+                    if (top === null) { resolve("blank"); return; } 
+                    
+                    ctx.putImageData(pixels, 0, 0);
+                    const cropCanvas = document.createElement('canvas');
+                    cropCanvas.width = right - left + 1;
+                    cropCanvas.height = bottom - top + 1;
+                    cropCanvas.getContext('2d').drawImage(
+                        canvas, left, top, cropCanvas.width, cropCanvas.height, 
+                        0, 0, cropCanvas.width, cropCanvas.height
+                    );
+                    
+                    resolve(cropCanvas.toDataURL('image/png'));
+                };
+                
+                img.onerror = () => { resolve("blank"); };
+                img.src = "https://wsrv.nl/?url=" + encodeURIComponent(src) + "&output=png";
+            });
+        }
+
+        function trocarImagem(elemento, id) {
+            const novaUrl = prompt("Cole o link da nova imagem:");
+            if (novaUrl && novaUrl.trim() !== "") {
+                elemento.innerHTML = `<div style="font-size:10px; color:#aaa; width:100%; text-align:center; margin-bottom:10px;">A carregar nova...</div>`;
+                trimTransparentEdges(novaUrl).then(finalSrc => {
+                    if (finalSrc !== "blank") {
+                        elemento.innerHTML = `<img src="${finalSrc}" alt="Produto">`;
+                        let prod = allProducts.find(p => p.id === id);
+                        if (prod) prod.customImg = finalSrc; 
+                    } else {
+                        elemento.innerHTML = `<div style="font-size:10px; color:#999; text-align:center; margin-bottom:10px; border:1px dashed #ccc; padding:5px; cursor:pointer;">Erro na Foto<br>(Clique)</div>`;
+                    }
+                });
+            }
+        }
+
+        function renderLadder() {
+            const mostrarNomes = document.getElementById('toggle-names').checked;
+            const checkboxes = document.querySelectorAll('.mfr-checkbox:checked');
+            const fabricantesAtivos = Array.from(checkboxes).map(cb => cb.value);
+
+            let produtosVisiveis = allProducts.filter(p => fabricantesAtivos.includes(p.manufacturer) && !p.excluded);
+            produtosVisiveis.sort((a, b) => a.price - b.price);
+            
+            const excluidosQtd = allProducts.filter(p => p.excluded).length;
+            const btnRestaurar = document.getElementById('btn-restaurar');
+            const spanContagem = document.getElementById('contagem-excluidos');
+            if (excluidosQtd > 0) {
+                btnRestaurar.style.display = 'flex';
+                spanContagem.innerText = excluidosQtd;
+            } else {
+                btnRestaurar.style.display = 'none';
+            }
+
+            const wrapper = document.getElementById('all-slides-wrapper');
+            wrapper.innerHTML = ''; 
+            
+            if (produtosVisiveis.length === 0) {
+                wrapper.innerHTML = "<h4 style='color:#666;'>Nenhum produto selecionado ou todos foram excluídos.</h4>";
+                return;
+            }
+
+            let splitLimit = parseInt(document.getElementById('items-first-slide').value, 10) || 12; 
+            
+            let chunks = [];
+            if (produtosVisiveis.length > splitLimit) {
+                chunks.push(produtosVisiveis.slice(0, splitLimit));
+                chunks.push(produtosVisiveis.slice(splitLimit)); 
+            } else { 
+                chunks.push(produtosVisiveis); 
+            }
+
+            const xOffset = 110, yOffset = 30;  
+            const espacoDeRespiro = 250; 
+
+            chunks.forEach((chunk, chunkIndex) => {
+                // CORREÇÃO CRUCIAL: O TAMANHO DO SLIDE É CALCULADO COM BASE NA QUANTIDADE DE PRODUTOS DESTE CHUNK ESPECÍFICO!
+                let itemsInThisChunk = chunk.length;
+
+                const baseSlideWidth = itemsInThisChunk * xOffset;
+                const baseSlideHeight = ((itemsInThisChunk - 1) * yOffset) + espacoDeRespiro;
+                
+                let baseWidth = baseSlideWidth + 40;
+                let baseHeight = baseSlideHeight + 40;
+                let finalWidth, finalHeight;
+                const targetRatio = 16 / 9;
+                
+                if (baseWidth / baseHeight > targetRatio) {
+                    finalWidth = baseWidth; 
+                    finalHeight = finalWidth / targetRatio;
+                } else {
+                    finalHeight = baseHeight; 
+                    finalWidth = finalHeight * targetRatio;
+                }
+
+                const slideContainer = document.createElement('div');
+                slideContainer.className = 'slide-container';
+                const downloadBtn = document.createElement('button');
+                downloadBtn.className = 'btn-download-slide';
+                downloadBtn.innerHTML = `⬇️ Baixar Imagem (Parte ${chunkIndex + 1})`;
+                downloadBtn.onclick = () => downloadSingleSlide(`slide-element-${chunkIndex}`, chunkIndex + 1);
+                
+                const slideDiv = document.createElement('div');
+                slideDiv.className = 'slide';
+                slideDiv.id = `slide-element-${chunkIndex}`;
+                
+                slideDiv.style.width = finalWidth + 'px';
+                slideDiv.style.height = finalHeight + 'px';
+                slideDiv.innerHTML = `<div class="ladder-container" id="ladder-${chunkIndex}"></div>`;
+                
+                slideContainer.appendChild(downloadBtn);
+                slideContainer.appendChild(slideDiv);
+                wrapper.appendChild(slideContainer);
+                
+                const ladderContainer = document.getElementById(`ladder-${chunkIndex}`);
+                
+                const pedacoWidth = chunk.length * xOffset;
+                const pedacoHeight = ((chunk.length - 1) * yOffset) + espacoDeRespiro; 
+                
+                const startX = (finalWidth - pedacoWidth) / 2;
+                const startY = (finalHeight - pedacoHeight) / 2;
+
+                chunk.forEach((prod, index) => {
+                    const leftPos = startX + (index * xOffset);
+                    const bottomPos = startY + (index * yOffset);
+                    
+                    const step = document.createElement('div');
+                    step.className = 'stair-step';
+                    step.style.left = `${leftPos}px`;
+                    step.style.bottom = `${bottomPos}px`; 
+                    step.style.width = `${xOffset}px`;
+                    step.style.height = `${yOffset}px`; 
+                    if (index === chunk.length - 1) step.style.borderRight = 'none';
+                    ladderContainer.appendChild(step);
+                    
+                    const card = document.createElement('div');
+                    card.className = 'product-card';
+                    card.style.left = `${leftPos}px`;
+                    card.style.bottom = `${bottomPos - 30}px`; 
+                    
+                    const nomeAtual = prod.customName !== undefined ? prod.customName : prod.name;
+                    const precoString = prod.customPrice !== undefined ? prod.customPrice : `R$ ${prod.price.toFixed(2).replace('.', ',')}`;
+                    let estiloNome = mostrarNomes ? "" : "display: none;";
+                    
+                    let classHighlight = prod.highlighted ? "is-highlighted" : "";
+                    
+                    let htmlPrecoRecomendado = "";
+                    if (String(prod.manufacturer).trim().toUpperCase() === 'CP') {
+                        let precoRecFormatado = prod.recommendedPrice > 0 ? `R$ ${prod.recommendedPrice.toFixed(2).replace('.', ',')}` : "R$ --,--";
+                        let precoRecAtual = prod.customRecommendedPrice !== undefined ? prod.customRecommendedPrice : precoRecFormatado;
+                        
+                        htmlPrecoRecomendado = `<div class="recommended-price" contenteditable="true" spellcheck="false" title="Preço Recomendado (Clique para alterar)" onblur="salvarEdicao('${prod.id}', 'precoRecomendado', this.innerText)">${precoRecAtual}</div>`;
+                    }
+                    
+                    card.innerHTML = `
+                        <div class="card-actions">
+                            <button class="btn-action btn-highlight" onclick="toggleHighlight('${prod.id}')" title="Destacar Produto">★</button>
+                            <button class="btn-action btn-delete" onclick="excluirProduto('${prod.id}')" title="Remover da Escada">✕</button>
+                        </div>
+                        ${htmlPrecoRecomendado}
+                        <div class="product-image-container ${classHighlight}" id="img-container-${chunkIndex}-${index}" onclick="trocarImagem(this, '${prod.id}')" title="Clique para trocar a foto">
+                            <div style="font-size:10px; color:#aaa; width:100%; text-align:center; margin-bottom:10px;">A carregar...</div>
+                        </div>
+                        <div class="product-name" style="${estiloNome}" contenteditable="true" spellcheck="false" title="Clique para alterar o texto" onblur="salvarEdicao('${prod.id}', 'nome', this.innerText)">${nomeAtual}</div>
+                        <div class="product-price" contenteditable="true" spellcheck="false" title="Clique para alterar o preço" onblur="salvarEdicao('${prod.id}', 'preco', this.innerText)">${precoString}</div>
+                    `;
+                    ladderContainer.appendChild(card);
+
+                    let activeImg = prod.customImg !== undefined ? prod.customImg : prod.img;
+
+                    if (activeImg) {
+                        if (activeImg.startsWith('data:image')) {
+                            const container = document.getElementById(`img-container-${chunkIndex}-${index}`);
+                            if (container) container.innerHTML = `<img src="${activeImg}" alt="Produto">`;
+                        } else {
+                            trimTransparentEdges(activeImg).then(finalSrc => {
+                                const container = document.getElementById(`img-container-${chunkIndex}-${index}`);
+                                if (container) {
+                                    if (finalSrc !== "blank") {
+                                        container.innerHTML = `<img src="${finalSrc}" alt="Produto">`;
+                                    } else {
+                                        container.innerHTML = `<div style="font-size:10px; color:#999; text-align:center; margin-bottom:10px; border:1px dashed #ccc; padding:5px; cursor:pointer;">Sem Foto<br>(Clique)</div>`;
+                                    }
+                                }
+                            });
+                        }
+                    } else {
+                        const container = document.getElementById(`img-container-${chunkIndex}-${index}`);
+                        if (container) container.innerHTML = `<div style="font-size:10px; color:#999; text-align:center; margin-bottom:10px; border:1px dashed #ccc; padding:5px; cursor:pointer;">Sem Foto<br>(Clique)</div>`;
+                    }
+                });
+            });
+        }
+
+        function downloadSingleSlide(slideId, partNumber) {
+            html2canvas(document.getElementById(slideId), { scale: 2, useCORS: true, backgroundColor: null }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = `Price_Ladder_Parte_${partNumber}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            });
+        }
+    </script>
+</body>
+</html>
