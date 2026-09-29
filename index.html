@@ -24,11 +24,14 @@
         .dropdown-content.show { display: block; }
         .dropdown-actions { display: flex; justify-content: space-between; padding: 8px; border-bottom: 1px solid #eee; background: #f8f9fa; position: sticky; top: 0; z-index: 101;}
         
-        .btn-mini { padding: 6px 10px; font-size: 12px; background: #e2e6ea; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 5px; }
+        .btn-mini { padding: 6px 10px; font-size: 12px; background: #e2e6ea; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 5px; text-decoration: none;}
         .btn-mini:hover { background: #d2d6da; }
         
         .btn-excel { background-color: #0d6efd; color: white; border: none; }
         .btn-excel:hover { background-color: #0b5ed7; }
+
+        .btn-domo { background-color: #17a2b8; color: white; border: none; }
+        .btn-domo:hover { background-color: #138496; color: white; }
 
         .btn-save { background-color: #28a745; color: white; border: none; }
         .btn-save:hover { background-color: #218838; }
@@ -100,6 +103,12 @@
 </head>
 <body>
     <div class="controls">
+        
+        <!-- LINK DA FONTE DE DADOS (DOMO) -->
+        <a href="https://colpal.domo.com/page/1158582068" target="_blank" class="btn-mini btn-domo" title="Abrir a página do Domo para baixar os dados atualizados">
+            🔗 Obter Dados (Domo)
+        </a>
+
         <!-- BOTÃO DE UPLOAD DA PLANILHA EXCEL -->
         <button class="btn-mini btn-excel" onclick="document.getElementById('input-excel').click()" title="Fazer upload de planilha Excel (.xlsx)">
             📊 Upload Excel
@@ -307,7 +316,6 @@
             }
         }
 
-        // --- FUNÇÃO ATUALIZADA: OCULTAR PACKS COM REGEX ---
         function excluirPacks() {
             // Regex procura por (um ou mais digitos) + 'x' + (um ou mais digitos). O 'i' no final ignora maiúsculas
             let regexMultiplicador = /\d+\s*x\s*\d+/i; 
@@ -534,7 +542,7 @@
                 slideContainer.className = 'slide-container';
                 const downloadBtn = document.createElement('button');
                 downloadBtn.className = 'btn-download-slide';
-                downloadBtn.innerHTML = `⬇️️ Baixar Imagem (Parte ${chunkIndex + 1})`;
+                downloadBtn.innerHTML = `⬇ Baixar Imagem (Parte ${chunkIndex + 1})`;
                 downloadBtn.onclick = () => downloadSingleSlide(`slide-element-${chunkIndex}`, chunkIndex + 1);
                 
                 const slideDiv = document.createElement('div');
